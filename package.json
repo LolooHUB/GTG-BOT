@@ -1,0 +1,20 @@
+{
+  "name": "general-tomas-guido-bot",
+  "version": "1.0.0",
+  "description": "Bot de moderación para la emp privada ficticia General Tomás Guido",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "keywords": [
+    "discord",
+    "moderacion",
+    "colectivos",
+    "general-tomas-guido"
+  ],
+  "author": "TuNombre",
+  "license": "MIT",
+  "dependencies": {
+    "discord.js": "^14.16.3"
+  }
+}
