@@ -1,5 +1,6 @@
 const { Client, GatewayIntentBits, EmbedBuilder, SlashCommandBuilder, REST, Routes, PermissionFlagsBits } = require("discord.js");
-require("dotenv").config();
+const path = require("path");
+const fs = require("fs");
 
 // Crear cliente
 const client = new Client({
@@ -9,10 +10,22 @@ const client = new Client({
 // IDs fijos
 const CANAL_SANCIONES = "1397738825609904242"; 
 const CANAL_TICKETS = "1390152260578967559"; 
+const MODERADORES = [
+  "1390152252169125992",
+  "1397020690435149824",
+  "1390152252160872524"
+];
+
+// Logo
+const LOGO_PATH = path.join(__dirname, "logo.png");
+const LOGO_EXISTS = fs.existsSync(LOGO_PATH);
+
+// Secrets desde GitHub
+const TOKEN = process.env.TOKEN;
+const CLIENT_ID = process.env.CLIENT_ID;
 
 // ===== Slash Commands =====
 const commands = [
-  // /ban
   new SlashCommandBuilder()
     .setName("ban")
     .setDescription("Banea a un usuario.")
@@ -21,7 +34,6 @@ const commands = [
     .addBooleanOption(opt => opt.setName("apelable").setDescription("¿Es apelable?").setRequired(true))
     .setDefaultMemberPermissions(PermissionFlagsBits.BanMembers),
 
-  // /kick
   new SlashCommandBuilder()
     .setName("kick")
     .setDescription("Expulsa a un usuario.")
@@ -29,7 +41,6 @@ const commands = [
     .addStringOption(opt => opt.setName("motivo").setDescription("Motivo del kick").setRequired(true))
     .setDefaultMemberPermissions(PermissionFlagsBits.KickMembers),
 
-  // /warn
   new SlashCommandBuilder()
     .setName("warn")
     .setDescription("Advierte a un usuario.")
@@ -37,20 +48,18 @@ const commands = [
     .addStringOption(opt => opt.setName("motivo").setDescription("Motivo del warn").setRequired(true))
     .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
 
-  // /msg
   new SlashCommandBuilder()
     .setName("msg")
     .setDescription("Envía solicitud de ticket a un usuario. (Solo moderadores)")
-    .addUserOption(opt => opt.setName("usuario").setDescription("Usuario destinatario").setRequired(true))
-    .setDefaultMemberPermissions(PermissionFlagsBits.ManageMessages),
+    .addUserOption(opt => opt.setName("usuario").setDescription("Usuario destinatario").setRequired(true)),
 ].map(cmd => cmd.toJSON());
 
 // ===== Registrar comandos =====
-const rest = new REST({ version: "10" }).setToken(process.env.TOKEN);
+const rest = new REST({ version: "10" }).setToken(TOKEN);
 (async () => {
   try {
     console.log("⏳ Registrando comandos...");
-    await rest.put(Routes.applicationCommands(process.env.CLIENT_ID), { body: commands });
+    await rest.put(Routes.applicationCommands(CLIENT_ID), { body: commands });
     console.log("✅ Comandos listos.");
   } catch (err) {
     console.error(err);
@@ -75,12 +84,24 @@ client.on("messageCreate", async (message) => {
       "🚌 ¡Subite que arrancamos!",
       "⚙️ ¿Necesitás ayuda? Estoy listo.",
       "🚍 ¿Ya sacaste tu ticket para un viaje?)",
-      "📩 Mira nuestra [Web Oficial](abelcraftok.github.io/GTG/)"
+      "📩 Mira nuestra [Web Oficial](https://abelcraftok.github.io/GTG/)"
     ];
     const random = respuestas[Math.floor(Math.random() * respuestas.length)];
     await message.reply(random);
   }
 });
+
+// Helper para crear embed con logo
+function crearEmbed(titulo, color, campos = []) {
+  const embed = new EmbedBuilder()
+    .setTitle(titulo)
+    .setColor(color)
+    .addFields(...campos)
+    .setTimestamp();
+
+  if (LOGO_EXISTS) embed.setThumbnail(`attachment://logo.png`);
+  return embed;
+}
 
 // Slash commands handler
 client.on("interactionCreate", async (interaction) => {
@@ -94,24 +115,20 @@ client.on("interactionCreate", async (interaction) => {
     const motivo = options.getString("motivo");
     const apelable = options.getBoolean("apelable");
 
-    const embed = new EmbedBuilder()
-      .setTitle("🚨 Usuario Baneado")
-      .setColor("Red")
-      .addFields(
-        { name: "Usuario", value: `${target.tag} (${target.id})` },
-        { name: "Moderador", value: `${user.tag}` },
-        { name: "Motivo", value: motivo },
-        { name: "Apelable", value: apelable ? "✅ Sí" : "❌ No" }
-      )
-      .setTimestamp();
+    const embed = crearEmbed("🚨 Usuario Baneado", "Red", [
+      { name: "Usuario", value: `${target.tag} (${target.id})` },
+      { name: "Moderador", value: `${user.tag}` },
+      { name: "Motivo", value: motivo },
+      { name: "Apelable", value: apelable ? "✅ Sí" : "❌ No" }
+    ]);
 
     try {
       const member = await guild.members.fetch(target.id);
       await member.ban({ reason: motivo });
-      await target.send({ embeds: [embed] }).catch(() => {});
-      await canalSanciones.send({ embeds: [embed] });
+      await target.send({ embeds: [embed], files: LOGO_EXISTS ? [{ attachment: LOGO_PATH, name: "logo.png" }] : [] }).catch(() => {});
+      await canalSanciones.send({ embeds: [embed], files: LOGO_EXISTS ? [{ attachment: LOGO_PATH, name: "logo.png" }] : [] });
       await interaction.reply({ content: `🚍 ${target.tag} fue baneado.`, ephemeral: true });
-    } catch (err) {
+    } catch {
       await interaction.reply({ content: "❌ No pude banear al usuario.", ephemeral: true });
     }
   }
@@ -120,21 +137,17 @@ client.on("interactionCreate", async (interaction) => {
     const target = options.getUser("usuario");
     const motivo = options.getString("motivo");
 
-    const embed = new EmbedBuilder()
-      .setTitle("⚠️ Usuario Expulsado")
-      .setColor("Orange")
-      .addFields(
-        { name: "Usuario", value: `${target.tag} (${target.id})` },
-        { name: "Moderador", value: `${user.tag}` },
-        { name: "Motivo", value: motivo }
-      )
-      .setTimestamp();
+    const embed = crearEmbed("⚠️ Usuario Expulsado", "Orange", [
+      { name: "Usuario", value: `${target.tag} (${target.id})` },
+      { name: "Moderador", value: `${user.tag}` },
+      { name: "Motivo", value: motivo }
+    ]);
 
     try {
       const member = await guild.members.fetch(target.id);
       await member.kick(motivo);
-      await target.send({ embeds: [embed] }).catch(() => {});
-      await canalSanciones.send({ embeds: [embed] });
+      await target.send({ embeds: [embed], files: LOGO_EXISTS ? [{ attachment: LOGO_PATH, name: "logo.png" }] : [] }).catch(() => {});
+      await canalSanciones.send({ embeds: [embed], files: LOGO_EXISTS ? [{ attachment: LOGO_PATH, name: "logo.png" }] : [] });
       await interaction.reply({ content: `🚍 ${target.tag} fue expulsado.`, ephemeral: true });
     } catch {
       await interaction.reply({ content: "❌ No pude expulsar al usuario.", ephemeral: true });
@@ -145,19 +158,15 @@ client.on("interactionCreate", async (interaction) => {
     const target = options.getUser("usuario");
     const motivo = options.getString("motivo");
 
-    const embed = new EmbedBuilder()
-      .setTitle("⚠️ Advertencia")
-      .setColor("Yellow")
-      .addFields(
-        { name: "Usuario", value: `${target.tag} (${target.id})` },
-        { name: "Moderador", value: `${user.tag}` },
-        { name: "Motivo", value: motivo }
-      )
-      .setTimestamp();
+    const embed = crearEmbed("⚠️ Advertencia", "Yellow", [
+      { name: "Usuario", value: `${target.tag} (${target.id})` },
+      { name: "Moderador", value: `${user.tag}` },
+      { name: "Motivo", value: motivo }
+    ]);
 
     try {
-      await target.send({ embeds: [embed] }).catch(() => {});
-      await canalSanciones.send({ embeds: [embed] });
+      await target.send({ embeds: [embed], files: LOGO_EXISTS ? [{ attachment: LOGO_PATH, name: "logo.png" }] : [] }).catch(() => {});
+      await canalSanciones.send({ embeds: [embed], files: LOGO_EXISTS ? [{ attachment: LOGO_PATH, name: "logo.png" }] : [] });
       await interaction.reply({ content: `🚍 ${target.tag} recibió una advertencia.`, ephemeral: true });
     } catch {
       await interaction.reply({ content: "❌ No pude advertir al usuario.", ephemeral: true });
@@ -165,17 +174,18 @@ client.on("interactionCreate", async (interaction) => {
   }
 
   if (commandName === "msg") {
+    // Solo moderadores
+    if (!MODERADORES.includes(user.id)) {
+      return interaction.reply({ content: "❌ No tienes permiso para usar este comando.", ephemeral: true });
+    }
+
     const target = options.getUser("usuario");
 
-    const embed = new EmbedBuilder()
-      .setTitle("📩 Solicitud de Ticket")
-      .setDescription(`Un moderador de **General Tomás Guido** solicita que abras un ticket en <#${CANAL_TICKETS}>`)
-      .setColor("Blue")
-      .setFooter({ text: "Sistema de tickets • General Tomás Guido" })
-      .setTimestamp();
+    const embed = crearEmbed("📩 Solicitud de Ticket", "Blue", [])
+      .setDescription(`Un moderador de **General Tomás Guido** solicita que abras un ticket.\n\n[Click aquí](https://discord.com/channels/${guild.id}/${CANAL_TICKETS}) para abrirlo.`);
 
     try {
-      await target.send({ embeds: [embed] });
+      await target.send({ embeds: [embed], files: LOGO_EXISTS ? [{ attachment: LOGO_PATH, name: "logo.png" }] : [] });
       await interaction.reply({ content: `✅ Solicitud enviada a ${target.tag}.`, ephemeral: true });
     } catch {
       await interaction.reply({ content: "❌ No pude enviar el mensaje al usuario.", ephemeral: true });
@@ -184,4 +194,4 @@ client.on("interactionCreate", async (interaction) => {
 });
 
 // Login
-client.login(process.env.TOKEN);
+client.login(TOKEN);
