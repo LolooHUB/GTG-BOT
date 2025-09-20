@@ -1,0 +1,28 @@
+name: Deploy Bot
+
+on:
+  push:
+    branches:
+      - main   # o la rama que uses
+
+jobs:
+  run-bot:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 📥 Clonar repo
+        uses: actions/checkout@v3
+
+      - name: ⚙️ Configurar Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 18
+
+      - name: 📦 Instalar dependencias
+        run: npm install
+
+      - name: 🚍 Iniciar bot
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+        run: node index.js
