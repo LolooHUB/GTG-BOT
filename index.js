@@ -18,13 +18,15 @@ const client = new Client({
 // IDs fijos
 const CANAL_SANCIONES = "1397738825609904242"; 
 const CANAL_TICKETS = "1390152260578967559"; 
+
+// Roles de moderador
 const MODERADORES = [
   "1390152252169125992",
   "1397020690435149824",
   "1390152252160872524"
 ];
 
-// Logo (en la raíz del proyecto, junto a index.js)
+// Logo (en la raíz del proyecto)
 const LOGO_PATH = path.join(__dirname, "logo.png");
 const LOGO_EXISTS = fs.existsSync(LOGO_PATH);
 
@@ -182,8 +184,9 @@ client.on("interactionCreate", async (interaction) => {
   }
 
   if (commandName === "msg") {
-    // Solo moderadores
-    if (!MODERADORES.includes(user.id)) {
+    // Solo usuarios con rol de moderador
+    const member = await guild.members.fetch(user.id);
+    if (!member.roles.cache.some(role => MODERADORES.includes(role.id))) {
       return interaction.reply({ content: "❌ No tienes permiso para usar este comando.", ephemeral: true });
     }
 
