@@ -1,20 +1,22 @@
 {
-  "name": "general-tomas-guido-bot",
+  "name": "gtg-discord-bot",
   "version": "1.0.0",
-  "description": "Bot de moderación para la emp privada ficticia General Tomás Guido",
+  "description": "Bot oficial de General Tomás Guido 🚌",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node index.js",
+    "deploy": "node deploy-commands.js"
   },
   "keywords": [
     "discord",
-    "moderacion",
-    "colectivos",
-    "general-tomas-guido"
+    "bot",
+    "moderación",
+    "gtg"
   ],
   "author": "lolo_jaja",
   "license": "MIT",
   "dependencies": {
-    "discord.js": "^14.16.3"
+    "discord.js": "^14.15.3",
+    "dotenv": "^16.4.5"
   }
 }
