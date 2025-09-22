@@ -3,7 +3,7 @@ name: Deploy Bot
 on:
   push:
     branches:
-      - main   # o la rama que uses
+      - main   # la rama que uses para producción
 
 jobs:
   run-bot:
@@ -20,6 +20,12 @@ jobs:
 
       - name: 📦 Instalar dependencias
         run: npm install
+
+      - name: 🧹 Registrar comandos
+        env:
+          TOKEN: ${{ secrets.TOKEN }}
+          CLIENT_ID: ${{ secrets.CLIENT_ID }}
+        run: node deploy-commands.js
 
       - name: 🚍 Iniciar bot
         env:
