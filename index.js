@@ -1,12 +1,4 @@
-const { 
-  Client, 
-  GatewayIntentBits, 
-  EmbedBuilder, 
-  SlashCommandBuilder, 
-  REST, 
-  Routes, 
-  PermissionFlagsBits 
-} = require("discord.js");
+const { Client, GatewayIntentBits, EmbedBuilder, SlashCommandBuilder, REST, Routes, PermissionFlagsBits } = require("discord.js");
 const path = require("path");
 const fs = require("fs");
 
@@ -18,15 +10,14 @@ const client = new Client({
 // IDs fijos
 const CANAL_SANCIONES = "1397738825609904242"; 
 const CANAL_TICKETS = "1390152260578967559"; 
-
-// Roles de moderador
+const CANAL_ALERTA = "1390152261937922068"; // Canal para alerta 5h45m
 const MODERADORES = [
   "1390152252169125992",
   "1397020690435149824",
   "1390152252160872524"
 ];
 
-// Logo (en la raíz del proyecto)
+// Logo
 const LOGO_PATH = path.join(__dirname, "logo.png");
 const LOGO_EXISTS = fs.existsSync(LOGO_PATH);
 
@@ -78,11 +69,43 @@ const rest = new REST({ version: "10" }).setToken(TOKEN);
 
 // ===== Eventos =====
 client.once("ready", () => {
-  console.log(`🚍 Bot iniciado como ${client.user.tag}`);
+  console.log(`🚍 Bot conectado como ${client.user.tag}`);
+
   client.user.setPresence({
     activities: [{ name: "Discord de General Tomás Guido 🚌", type: 0 }],
     status: "online"
   });
+
+  // Tiempo en milisegundos (5h 45m = 20.700s)
+  const TIEMPO_ALERTA = (5 * 60 * 60 + 45 * 60) * 1000;
+
+  setTimeout(async () => {
+    try {
+      const canalAviso = await client.channels.fetch(CANAL_ALERTA);
+      if (!canalAviso) return console.error("❌ No encontré el canal de aviso.");
+
+      const embed = new EmbedBuilder()
+        .setTitle("⏰ Alerta de tiempo")
+        .setDescription("El bot ha estado en línea por **5 horas y 45 minutos**.")
+        .setColor("Red")
+        .setTimestamp();
+
+      if (LOGO_EXISTS) embed.setThumbnail("attachment://logo.png");
+
+      // Mencionamos roles de moderadores
+      const menciones = MODERADORES.map(id => `<@&${id}>`).join(" ");
+
+      await canalAviso.send({
+        content: menciones,
+        embeds: [embed],
+        files: LOGO_EXISTS ? [{ attachment: LOGO_PATH, name: "logo.png" }] : []
+      });
+
+      console.log("✅ Aviso enviado a los moderadores.");
+    } catch (err) {
+      console.error("❌ Error al enviar el aviso:", err);
+    }
+  }, TIEMPO_ALERTA);
 });
 
 // Mención al bot
@@ -109,7 +132,7 @@ function crearEmbed(titulo, color, campos = []) {
     .addFields(...campos)
     .setTimestamp();
 
-  if (LOGO_EXISTS) embed.setThumbnail(`attachment://logo.png`);
+  if (LOGO_EXISTS) embed.setThumbnail("attachment://logo.png");
   return embed;
 }
 
@@ -184,9 +207,8 @@ client.on("interactionCreate", async (interaction) => {
   }
 
   if (commandName === "msg") {
-    // Solo usuarios con rol de moderador
-    const member = await guild.members.fetch(user.id);
-    if (!member.roles.cache.some(role => MODERADORES.includes(role.id))) {
+    // Solo moderadores (rol)
+    if (!interaction.member.roles.cache.some(r => MODERADORES.includes(r.id))) {
       return interaction.reply({ content: "❌ No tienes permiso para usar este comando.", ephemeral: true });
     }
 
